@@ -6,37 +6,39 @@
 and we kept a copy of the Rust standard library inside the `library/` folder that shall be used as the verification target for all our challenges.
 We will periodically update the `library/` folder to track newer versions of the [official Rust standard library](https://github.com/rust-lang/rust/).
 NOTE: This work is not officially affiliated, or endorsed by the Rust project or Rust Foundation.
-**Challenges:** Each challenge will be documented in the contest book in the Challenges chapter, and they will have a
-tracking issue where participants can add comments and ask clarification questions.
+**Challenges:** Each individual verification effort will have a
+tracking issue where contributors can add comments and ask clarification questions.
 You can find the list of [open challenges here](https://github.com/model-checking/verify-rust-std/labels/Challenge).
 
-**Solutions:** Solutions to a challenge should be submitted as a single Pull Request (PR) to the contest repository.
+**Solutions:** Solutions to a problem should be submitted as a single Pull Request (PR) to this repository. 
 The solution should run as part of the CI.
 See more details about [minimum requirements for each solution](general-rules.md#solution-requirements).
 
 
 ## Basic Workflow
 
-1. A challenge will be published in the contest book with details of the challenge,
-   and a tracking issue labeled with “Challenge” will be opened, so it can be used for clarifications and questions,
-   as well as to track the status of the challenge.
-2. Participants should create a fork of the contest repository where they will implement their proposed solution.
-3. Once they are to submit their solution for analysis, participants should create a PR against the contest repository for analysis.
+1. A verification effort will be published in the repository with
+appropriate details, and a tracking issue labeled with “Challenge”
+will be opened, so it can be used for clarifications and questions, as
+well as to track the status of the challenge.
+
+2. Participants should create a fork of the repository where they will implement their proposed solution.
+3. Once they submit their solution for analysis, participants should create a PR against the repository for analysis.
    Please make sure your solution meets [the minimum requirements described here](general-rules.md#solution-requirements).
 4. Each contribution will be reviewed on a first come, first served basis.
-   Acceptance will be based on a unanimous affirmative vote from the review committee.
+   Acceptance will be based on a review by a committee.
 5. Once approved by the review committee, the change will be merged into the repository.
 
 ## Solution Requirements
 
-A proposed solution to a contest will only **be reviewed** if all the minimum requirements below are met:
+A proposed solution to a verification problem will only **be reviewed** if all the minimum requirements below are met:
 
-* Each contribution or attempt should be submitted via a pull request to be analyzed by the committee.
+* Each contribution or attempt should be submitted via a pull request to be analyzed by reviewers. 
 * By submitting the solution, participants confirm that they can use, modify, copy, and redistribute their contribution,
   under the terms of their choice.
 * The contribution must be automated and should be checked and pass as part of the PR checks.
 * All tools used by the solution must be in [the list of accepted tools](tools.md#approved-tools),
-  and previously integrated in the contest repository.
+  and previously integrated in the repository.
   If that is not the case, please submit a separate [tool application first](todo.md).
 * There is no restriction on the number of contributors for a solution.
   Make sure you have the rights to submit your solution and that all contributors are properly mentioned.
@@ -48,7 +50,7 @@ challenged being solved.
 
 ## Call for Challenges
 
-The goal of the contest is to enable the verification of the entire Rust standard library.
+The goal of the effort is to enable the verification of the entire Rust standard library.
 The type of obstacles users face may depend on which part of the standard library you would like to verify. Thus, our challenges are developed with the target of verifying a specific section of the standard library or strengthening existing verification.
 
 Everyone is welcome to submit new challenge proposals for review by our committee.
@@ -75,7 +77,7 @@ Solutions must be automated using one of the tools previously approved and liste
 * Once the tool is approved, the participant needs to create a PR that creates a new action that runs the
   std library verification using the new tool, as well as an entry to the “Approved Tools” section of this book.
 * Once the PR is merged, the tool is considered integrated.
-* The contest repository will be updated periodically, which can impact the tool capacity to analyze the new version of the repository.
+* The repository will be updated periodically, which can impact the tool capacity to analyze the new version of the repository.
   I.e., the action may no longer pass after an update.
   This will not impact the approval status of the tool, however,
   new solutions that want to employ the tool may need to ensure the action is passing first.

@@ -1,8 +1,8 @@
 # Copyright Kani Contributors
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 [book]
-title = "Verify Rust Std Lib Contest"
-description = "Contest Rules and Challenges"
+title = "Verify Rust Std Lib"
+description = "How & What?"
 authors = ["Kani Developers"]
 language = "en"
 multilingual = false
