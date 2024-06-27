@@ -29,6 +29,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Debugging information:"
+          echo "Current directory: $(pwd)"
+          echo "Directory contents: $(ls -la)"
+          echo "Environment variables:"
+          env
+          echo "Python version:"
+          python --version
+          echo "Installed packages:"
+          pip list
+
+          echo "Running Python script:"
+          python << EOF
           import os
           import toml
           from github import Github
@@ -61,3 +73,4 @@ jobs:
           else:
               print("PR does not have approval from at least 2 committee members.")
               exit(1)
+          EOF
