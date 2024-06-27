@@ -1,11 +1,6 @@
 name: Check PR Approvals
 
 on:
-  pull_request:
-    types: [opened, reopened, synchronize]
-    paths:
-      - 'library/**'
-      - 'doc/src/challenges/**'
   pull_request_review:
     types: [submitted, edited, dismissed]
   workflow_dispatch:  # Allows manual triggering
@@ -14,21 +9,55 @@ jobs:
   check-approvals:
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR Approvals
+      - name: Check PR Relevance and Approvals
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const { owner, repo } = context.repo;
-            const pull_number = context.issue.number;
+            let pull_number;
 
-            // Get PR details
-            const pr = await github.rest.pulls.get({
+            if (github.event_name === 'workflow_dispatch') {
+              const branch = github.ref.replace('refs/heads/', '');
+              const prs = await github.rest.pulls.list({
+                owner,
+                repo,
+                head: `${owner}:${branch}`,
+                state: 'open'
+              });
+              if (prs.data.length === 0) {
+                console.log('No open PR found for this branch.');
+                return;
+              }
+              pull_number = prs.data[0].number;
+            } else {
+              pull_number = context.issue.number;
+            }
+
+            // Get PR files
+            const files = await github.rest.pulls.listFiles({
               owner,
               repo,
               pull_number
             });
 
+            const relevantPaths = ['library/', 'doc/src/challenges/'];
+            const isRelevantPR = files.data.some(file =>
+              relevantPaths.some(path => file.filename.startsWith(path))
+            );
+
+            if (!isRelevantPR) {
+              console.log('PR does not touch relevant paths. Exiting workflow.');
+              process.exit(0);  // Exit the workflow successfully
+            }
+
+            // If we're here, the PR is relevant. Now check if it's an approval or manual trigger
+            if (github.event_name !== 'workflow_dispatch' && github.event.review.state !== 'approved') {
+              console.log('Not an approval or manual trigger. Exiting workflow.');
+              process.exit(0);  // Exit the workflow successfully
+            }
+
+            // Get all reviews
             const reviews = await github.rest.pulls.listReviews({
               owner,
               repo,
@@ -44,8 +73,6 @@ jobs:
             console.log('PR Approvers:', Array.from(approvers));
 
             const requiredApprovals = 1;
-
-            // Create or update check run
             const checkName = 'PR Approval Status';
             const conclusion = approvers.size >= requiredApprovals ? 'success' : 'failure';
             const output = {
@@ -54,7 +81,14 @@ jobs:
               text: `Approvers: ${Array.from(approvers).join(', ')}`
             };
 
-            // Get existing check run if it exists
+            // Get PR details
+            const pr = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number
+            });
+
+            // Create or update check run
             const checkRuns = await github.rest.checks.listForRef({
               owner,
               repo,
@@ -63,7 +97,6 @@ jobs:
             });
 
             if (checkRuns.data.total_count > 0) {
-              // Update existing check run
               await github.rest.checks.update({
                 owner,
                 repo,
@@ -73,7 +106,6 @@ jobs:
                 output
               });
             } else {
-              // Create new check run
               await github.rest.checks.create({
                 owner,
                 repo,
