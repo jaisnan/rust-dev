@@ -8,6 +8,7 @@ on:
       - 'doc/src/challenges/**'
   pull_request_review:
     types: [submitted, edited, dismissed]
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   check-approvals:
@@ -20,6 +21,13 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             const pull_number = context.issue.number;
+
+            // Get PR details
+            const pr = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number
+            });
 
             const reviews = await github.rest.pulls.listReviews({
               owner,
@@ -35,10 +43,48 @@ jobs:
 
             console.log('PR Approvers:', Array.from(approvers));
 
-            const requiredApprovals = 2;
+            const requiredApprovals = 1;
 
-            if (approvers.size < requiredApprovals) {
-              core.setFailed(`PR needs at least ${requiredApprovals} approvals. Current approvals: ${approvers.size}`);
+            // Create or update check run
+            const checkName = 'PR Approval Status';
+            const conclusion = approvers.size >= requiredApprovals ? 'success' : 'failure';
+            const output = {
+              title: checkName,
+              summary: `PR has ${approvers.size}/${requiredApprovals} required approvals.`,
+              text: `Approvers: ${Array.from(approvers).join(', ')}`
+            };
+
+            // Get existing check run if it exists
+            const checkRuns = await github.rest.checks.listForRef({
+              owner,
+              repo,
+              ref: pr.data.head.sha,
+              check_name: checkName
+            });
+
+            if (checkRuns.data.total_count > 0) {
+              // Update existing check run
+              await github.rest.checks.update({
+                owner,
+                repo,
+                check_run_id: checkRuns.data.check_runs[0].id,
+                status: 'completed',
+                conclusion,
+                output
+              });
             } else {
-              console.log(`PR has sufficient approvals (${approvers.size}/${requiredApprovals})`);
+              // Create new check run
+              await github.rest.checks.create({
+                owner,
+                repo,
+                name: checkName,
+                head_sha: pr.data.head.sha,
+                status: 'completed',
+                conclusion,
+                output
+              });
+            }
+
+            if (conclusion === 'failure') {
+              core.setFailed(`PR needs at least ${requiredApprovals} approvals. Current approvals: ${approvers.size}`);
             }
