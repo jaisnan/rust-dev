@@ -1,33 +1,44 @@
-name: PR Approval Check
+name: Check PR Approvals
 
 on:
-  pull_request_review:
-    types: [submitted]
   pull_request:
+    types: [opened, reopened, synchronize]
     paths:
       - 'library/**'
       - 'doc/src/challenges/**'
+  pull_request_review:
+    types: [submitted, edited, dismissed]
 
 jobs:
-  check_approvals:
+  check-approvals:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Get PR Approvers
+      - name: Check PR Approvals
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
+            const { owner, repo } = context.repo;
+            const pull_number = context.issue.number;
+
             const reviews = await github.rest.pulls.listReviews({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number
+              owner,
+              repo,
+              pull_number
             });
 
-            const approvers = reviews.data
-              .filter(review => review.state === 'APPROVED')
-              .map(review => review.user.login);
+            const approvers = new Set(
+              reviews.data
+                .filter(review => review.state === 'APPROVED')
+                .map(review => review.user.login)
+            );
 
-            console.log('PR Approvers:', approvers);
+            console.log('PR Approvers:', Array.from(approvers));
+
+            const requiredApprovals = 2;
+
+            if (approvers.size < requiredApprovals) {
+              core.setFailed(`PR needs at least ${requiredApprovals} approvals. Current approvals: ${approvers.size}`);
+            } else {
+              console.log(`PR has sufficient approvals (${approvers.size}/${requiredApprovals})`);
+            }
