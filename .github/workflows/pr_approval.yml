@@ -72,7 +72,7 @@ jobs:
 
             console.log('PR Approvers:', Array.from(approvers));
 
-            const requiredApprovals = 1;
+            const requiredApprovals = 2;
             const checkName = 'PR Approval Status';
             const conclusion = approvers.size >= requiredApprovals ? 'success' : 'failure';
             const output = {
