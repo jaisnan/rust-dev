@@ -15,62 +15,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Get PR Approvers
+        uses: actions/github-script@v6
         with:
-          python-version: '3.x'
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            const reviews = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install PyGithub toml
+            const approvers = reviews.data
+              .filter(review => review.state === 'APPROVED')
+              .map(review => review.user.login);
 
-      - name: Check PR approvals
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Debugging information:"
-          echo "Current directory: $(pwd)"
-          echo "Directory contents: $(ls -la)"
-          echo "Environment variables:"
-          env
-          echo "Python version:"
-          python --version
-          echo "Installed packages:"
-          pip list
-
-          echo "Running Python script:"
-          python << EOF
-          import os
-          import toml
-          from github import Github
-
-          def load_committee_members():
-              with open('pr_committee.toml', 'r') as f:
-                  config = toml.load(f)
-              return set(config.get('pr_committee', []))
-
-          def check_approvals(repo, pr_number, committee_members):
-              pr = repo.get_pull(pr_number)
-              reviews = pr.get_reviews()
-
-              approved_committee_members = set()
-              for review in reviews:
-                  if review.state == 'APPROVED' and review.user.login in committee_members:
-                      approved_committee_members.add(review.user.login)
-
-              return len(approved_committee_members) >= 2
-
-          github_token = os.environ['GITHUB_TOKEN']
-          g = Github(github_token)
-          repo = g.get_repo(os.environ['GITHUB_REPOSITORY'])
-          pr_number = int(os.environ['GITHUB_EVENT_PATH'].split('/')[-1].split('.')[0])
-
-          committee_members = load_committee_members()
-          if check_approvals(repo, pr_number, committee_members):
-              print("PR approved by at least 2 committee members.")
-              exit(0)
-          else:
-              print("PR does not have approval from at least 2 committee members.")
-              exit(1)
-          EOF
+            console.log('PR Approvers:', approvers);
