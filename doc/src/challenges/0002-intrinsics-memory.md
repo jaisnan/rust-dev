@@ -85,3 +85,7 @@ All proofs must automatically ensure the absence of the following undefined beha
 
 Note: All solutions to verification challenges need to satisfy the criteria established in the [challenge book](../general-rules.md)
 in addition to the ones listed above.
+
+
+Adding test here that checks if a PR can be approved without 2 approvals from the committee.
+Blah blah blah blah.
