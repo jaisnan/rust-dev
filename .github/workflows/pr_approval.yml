@@ -48,13 +48,13 @@ jobs:
 
             if (!isRelevantPR) {
               console.log('PR does not touch relevant paths. Exiting workflow.');
-              process.exit(0);  // Exit the workflow successfully
+              return;
             }
 
             // If we're here, the PR is relevant. Now check if it's an approval or manual trigger
-            if (github.event_name !== 'workflow_dispatch' && github.event.review.state !== 'approved') {
-              console.log('Not an approval or manual trigger. Exiting workflow.');
-              process.exit(0);  // Exit the workflow successfully
+            if (github.event_name === 'pull_request_review' && github.event.review.state !== 'approved') {
+              console.log('Not an approval. Exiting workflow.');
+              return;
             }
 
             // Get all reviews
