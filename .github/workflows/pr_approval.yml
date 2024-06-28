@@ -2,11 +2,12 @@ name: Check PR Approvals
 
 on:
   pull_request_review:
-    types: [submitted, edited, dismissed]
+    types: [submitted]
   workflow_dispatch:  # Allows manual triggering
 
 jobs:
   check-approvals:
+    if: github.event.review.state == 'APPROVED'
     runs-on: ubuntu-latest
     steps:
       - name: Check PR Relevance and Approvals
