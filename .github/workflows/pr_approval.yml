@@ -61,9 +61,21 @@ jobs:
             }
 
             // Read and parse the TOML file
-            const tomlContent = fs.readFileSync('.github/pull_requests.toml', 'utf8');
-            const tomlData = toml.parse(tomlContent);
-            const requiredApprovers = tomlData.required_approvers;
+            try {
+              const tomlContent = fs.readFileSync('.github/pr_approval.toml', 'utf8');
+              console.log('TOML content:', tomlContent);
+              const tomlData = toml.parse(tomlContent);
+              console.log('Parsed TOML data:', JSON.stringify(tomlData, null, 2));
+              requiredApprovers = tomlData.committee;
+
+              if (!Array.isArray(requiredApprovers)) {
+                throw new Error('required_approvers is not an array in the TOML file');
+              }
+            } catch (error) {
+              console.error('Error reading or parsing TOML file:', error);
+              core.setFailed('Failed to read required approvers list');
+              return;
+            }
 
             // Get all reviews
             const reviews = await github.rest.pulls.listReviews({
