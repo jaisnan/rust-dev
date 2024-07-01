@@ -62,7 +62,7 @@ jobs:
 
             // Read and parse the TOML file
             try {
-              const tomlContent = fs.readFileSync('.github/pr_approval.toml', 'utf8');
+              const tomlContent = fs.readFileSync('.github/pull_requests.toml', 'utf8');
               console.log('TOML content:', tomlContent);
               const tomlData = toml.parse(tomlContent);
               console.log('Parsed TOML data:', JSON.stringify(tomlData, null, 2));
