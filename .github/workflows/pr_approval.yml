@@ -7,14 +7,22 @@ on:
 
 jobs:
   check-approvals:
-    if: github.event.review.state == 'APPROVED'
+    if: github.event.review.state == 'APPROVED' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Install TOML parser
+        run: npm install @iarna/toml
+
       - name: Check PR Relevance and Approvals
         uses: actions/github-script@v6
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
+            const fs = require('fs');
+            const toml = require('@iarna/toml');
             const { owner, repo } = context.repo;
             let pull_number;
 
@@ -52,11 +60,10 @@ jobs:
               return;
             }
 
-            // If we're here, the PR is relevant. Now check if it's an approval or manual trigger
-            if (github.event_name === 'pull_request_review' && github.event.review.state !== 'approved') {
-              console.log('Not an approval. Exiting workflow.');
-              return;
-            }
+            // Read and parse the TOML file
+            const tomlContent = fs.readFileSync('.github/pull_requests.toml', 'utf8');
+            const tomlData = toml.parse(tomlContent);
+            const requiredApprovers = tomlData.required_approvers;
 
             // Get all reviews
             const reviews = await github.rest.pulls.listReviews({
@@ -71,15 +78,20 @@ jobs:
                 .map(review => review.user.login)
             );
 
-            console.log('PR Approvers:', Array.from(approvers));
-
             const requiredApprovals = 2;
+            const requiredApproversCount = Array.from(approvers)
+              .filter(approver => requiredApprovers.includes(approver))
+              .length;
+
+            console.log('PR Approvers:', Array.from(approvers));
+            console.log('Required Approvers:', requiredApproversCount);
+
             const checkName = 'PR Approval Status';
-            const conclusion = approvers.size >= requiredApprovals ? 'success' : 'failure';
+            const conclusion = (approvers.size >= requiredApprovals && requiredApproversCount >= 2) ? 'success' : 'failure';
             const output = {
               title: checkName,
-              summary: `PR has ${approvers.size}/${requiredApprovals} required approvals.`,
-              text: `Approvers: ${Array.from(approvers).join(', ')}`
+              summary: `PR has ${approvers.size} total approvals and ${requiredApproversCount} required approvals.`,
+              text: `Approvers: ${Array.from(approvers).join(', ')}\nRequired Approvers: ${requiredApprovers.join(', ')}`
             };
 
             // Get PR details
@@ -119,5 +131,5 @@ jobs:
             }
 
             if (conclusion === 'failure') {
-              core.setFailed(`PR needs at least ${requiredApprovals} approvals. Current approvals: ${approvers.size}`);
+              core.setFailed(`PR needs at least ${requiredApprovals} total approvals and 2 required approvals. Current approvals: ${approvers.size}, Required approvals: ${requiredApproversCount}`);
             }
