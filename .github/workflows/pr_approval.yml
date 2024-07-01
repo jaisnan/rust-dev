@@ -60,17 +60,17 @@ jobs:
               return;
             }
 
-            // Read and parse the TOML file
+            // Get parsed data
             try {
-              const tomlContent = fs.readFileSync('.github/pull_requests.toml', 'utf8');
+              const tomlContent = fs.readFileSync('.github/approvers.toml', 'utf8');
               console.log('TOML content:', tomlContent);
               const tomlData = toml.parse(tomlContent);
               console.log('Parsed TOML data:', JSON.stringify(tomlData, null, 2));
-              requiredApprovers = tomlData.committee;
 
-              if (!Array.isArray(requiredApprovers)) {
-                throw new Error('required_approvers is not an array in the TOML file');
+              if (!tomlData.committee || !Array.isArray(tomlData.committee.members)) {
+                throw new Error('committee.members is not an array in the TOML file');
               }
+              requiredApprovers = tomlData.committee.members;
             } catch (error) {
               console.error('Error reading or parsing TOML file:', error);
               core.setFailed('Failed to read required approvers list');
