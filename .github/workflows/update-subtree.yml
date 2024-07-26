@@ -110,7 +110,7 @@ jobs:
       - name: Attempt subtree merge
         working-directory: head
         run: |
-          if ! git subtree merge --prefix=library subtree/library --squash; then
+          if ! git subtree merge --prefix=library subtree/library --squash --quiet; then
             echo "Merge conflict detected. Attempting automatic resolution."
 
             # Abort the failed merge
