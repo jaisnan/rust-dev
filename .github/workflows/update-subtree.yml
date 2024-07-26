@@ -38,7 +38,7 @@ jobs:
         id: toolchain-date
         run: |
           cd kani/
-          TOOLCHAIN_DATE=$(grep 'date =' kani/rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
+          TOOLCHAIN_DATE=$(grep 'date =' rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
           echo "toolchain_date=$TOOLCHAIN_DATE" >> $GITHUB_OUTPUT
 
       - name: Build `Kani`
@@ -48,6 +48,7 @@ jobs:
           echo "$(pwd)/scripts" >> $GITHUB_PATH
 
       - name: Get Rust info
+        working-directory: kani
         id: rust-info
         run: |
           RUSTC_INFO=$(rustc --version --verbose)
