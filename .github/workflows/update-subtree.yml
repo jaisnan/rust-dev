@@ -87,7 +87,9 @@ jobs:
         working-directory: head
         run: |
           git remote add upstream https://github.com/rust-lang/rust.git
+          git remote set-url origin https://github.com/model-checking/verify-rust-std.git
           git fetch upstream ${{ needs.prepare.outputs.commit_hash }}
+          git remote -v
 
       - name: Prepare sync branch
         working-directory: head
@@ -98,14 +100,13 @@ jobs:
           git checkout ${{ needs.prepare.outputs.commit_hash }}
           git pull upstream ${{ needs.prepare.outputs.commit_hash }}
 
-      # - name: Update subtree
-      #   run: |
-      #     cd repo
-      #     git subtree split --prefix=library --onto subtree/library -b subtree/library
-      #     git fetch origin
-      #     git checkout -b ${{ env.SYNC_BRANCH }} origin/main
+      - name: Update subtree
+        run: |
+          git subtree split --prefix=library --onto subtree/library -b subtree/library
+          git fetch origin
+          git checkout -b ${{ env.SYNC_BRANCH }} origin/main
 
-      # - name: Merge subtree
-      #   run: |
-      #     cd repo
-      #     git subtree merge --prefix=library subtree/library --squash
+      - name: Merge subtree
+        run: |
+          cd repo
+          git subtree merge --prefix=library subtree/library --squash
