@@ -96,7 +96,7 @@ jobs:
           echo "SYNC_BRANCH=$SYNC_BRANCH" >> $GITHUB_ENV
           echo "--- Fork branch: ${SYNC_BRANCH} ---"
           git checkout ${{ needs.prepare.outputs.commit_hash }}
-          git pull
+          git pull upstream ${{ needs.prepare.outputs.commit_hash }}
 
       # - name: Update subtree
       #   run: |
