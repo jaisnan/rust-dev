@@ -100,15 +100,38 @@ jobs:
           git checkout ${{ needs.prepare.outputs.commit_hash }}
           git pull upstream ${{ needs.prepare.outputs.commit_hash }}
 
-      - name: Update subtree
+      - name: Update and merge subtree
         working-directory: head
         run: |
           git subtree split --prefix=library --onto subtree/library -b subtree/library
           git fetch origin
           git checkout -b ${{ env.SYNC_BRANCH }} origin/main
 
-      - name: Merge subtree
+      - name: Attempt subtree merge
         working-directory: head
         run: |
-          cd repo
-          git subtree merge --prefix=library subtree/library --squash
+          if ! git subtree merge --prefix=library subtree/library --squash; then
+            echo "Merge conflict detected. Attempting automatic resolution."
+
+            # Abort the failed merge
+            git merge --abort
+
+            # Attempt the merge again with the 'ours' strategy
+            if git subtree merge --prefix=library subtree/library --squash -X ours; then
+              echo "Merge conflicts automatically resolved using 'ours' strategy."
+              echo "MERGE_AUTO_RESOLVED=true" >> $GITHUB_ENV
+            else
+              echo "Failed to automatically resolve merge conflicts."
+              echo "MERGE_FAILED=true" >> $GITHUB_ENV
+              exit 1
+            fi
+          fi
+
+      - name: Check auto-resolved changes
+        if: env.MERGE_AUTO_RESOLVED == 'true'
+        run: |
+          echo "Merge was auto-resolved. Here are the changes:"
+          git diff --name-status HEAD~1
+
+          # You might want to run tests or other checks here to ensure
+          # the auto-resolution didn't break anything
