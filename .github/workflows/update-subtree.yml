@@ -103,14 +103,14 @@ jobs:
       - name: Update and merge subtree
         working-directory: head
         run: |
-          git subtree split --prefix=library --onto subtree/library -b subtree/library
+          git subtree split --prefix=library --onto subtree/library -b subtree/library --quiet
           git fetch origin
           git checkout -b ${{ env.SYNC_BRANCH }} origin/main
 
       - name: Attempt subtree merge
         working-directory: head
         run: |
-          if ! git subtree merge --prefix=library subtree/library --squash --quiet; then
+          if ! git subtree merge --prefix=library subtree/library --squash; then
             echo "Merge conflict detected. Attempting automatic resolution."
 
             # Abort the failed merge
