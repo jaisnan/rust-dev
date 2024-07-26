@@ -77,12 +77,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: head
     steps:
+      - name: Checkout library
+        uses: actions/checkout@v3
+        with:
+          path: head
 
       - name: Add upstream remote and fetch specific commit
+        working-directory: head
         run: |
           git remote add upstream https://github.com/rust-lang/rust.git
           git remote set-url origin https://github.com/model-checking/verify-rust-std.git
@@ -90,6 +92,7 @@ jobs:
           git remote -v
 
       - name: Prepare sync branch
+        working-directory: head
         run: |
           SYNC_BRANCH="sync-${{ needs.prepare.outputs.toolchain_date }}"
           echo "SYNC_BRANCH=$SYNC_BRANCH" >> $GITHUB_ENV
@@ -98,12 +101,14 @@ jobs:
           git pull upstream ${{ needs.prepare.outputs.commit_hash }}
 
       - name: Update subtree
+        working-directory: head
         run: |
           git subtree split --prefix=library --onto subtree/library -b subtree/library
           git fetch origin
           git checkout -b ${{ env.SYNC_BRANCH }} origin/main
 
       - name: Merge subtree
+        working-directory: head
         run: |
           cd repo
           git subtree merge --prefix=library subtree/library --squash
