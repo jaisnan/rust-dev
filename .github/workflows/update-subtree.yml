@@ -87,7 +87,7 @@ jobs:
         working-directory: head
         run: |
           git remote add upstream https://github.com/rust-lang/rust.git
-          git fetch upstream ${{ needs.prepare.outputs.toolchain_date }}
+          git fetch upstream ${{ needs.prepare.outputs.commit_hash }}
 
       - name: Prepare sync branch
         working-directory: head
