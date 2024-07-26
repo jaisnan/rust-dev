@@ -37,7 +37,11 @@ jobs:
       - name: Read date from rust-toolchain.toml
         working-directory: kani
         run: |
-          TOOLCHAIN_DATE=$(grep 'channel.*=.*"nightly-' rust-toolchain.toml | sed -E 's/.*nightly-([0-9-]+).*/\1/')
+          TOOLCHAIN_DATE=$(grep 'channel.*=.*"nightly-' ./rust-toolchain.toml | sed -E 's/.*nightly-([0-9-]+).*/\1/')
+          if [ -z "$TOOLCHAIN_DATE" ]; then
+            echo "Error: Could not extract date from rust-toolchain file."
+            exit 1
+          fi
           echo "toolchain_date=$TOOLCHAIN_DATE" >> $GITHUB_OUTPUT
 
       - name: Build `Kani`
