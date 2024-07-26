@@ -1,7 +1,9 @@
 name: Sync Rust STD
 
 on:
-  pull_request:
+  push:
+    branches:
+      - '**'
   workflow_dispatch:
 
 env:
