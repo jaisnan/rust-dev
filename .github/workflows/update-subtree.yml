@@ -37,8 +37,15 @@ jobs:
       - name: Read date from rust-toolchain.toml
         id: toolchain-date
         run: |
+          cd kani/
           TOOLCHAIN_DATE=$(grep 'date =' kani/rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
           echo "toolchain_date=$TOOLCHAIN_DATE" >> $GITHUB_OUTPUT
+
+      - name: Build `Kani`
+        working-directory: kani
+        run: |
+          cargo build-dev --release
+          echo "$(pwd)/scripts" >> $GITHUB_PATH
 
       - name: Get Rust info
         id: rust-info
@@ -72,28 +79,28 @@ jobs:
           path: head
 
       - name: Add upstream remote
+        working-directory: head
         run: |
-          cd head
           git remote add upstream https://github.com/rust-lang/rust.git
           git fetch upstream
 
       - name: Prepare sync branch
+        working-directory: head
         run: |
-          cd head
           SYNC_BRANCH="sync-${{ steps.rust-info.outputs.toolchain_date }}"
           echo "SYNC_BRANCH=$SYNC_BRANCH" >> $GITHUB_ENV
           echo "--- Fork branch: ${SYNC_BRANCH} ---"
           git checkout ${{ steps.rust-info.outputs.commit_hash }}
           git pull
 
-      - name: Update subtree
-        run: |
-          cd repo
-          git subtree split --prefix=library --onto subtree/library -b subtree/library
-          git fetch origin
-          git checkout -b ${{ env.SYNC_BRANCH }} origin/main
+      # - name: Update subtree
+      #   run: |
+      #     cd repo
+      #     git subtree split --prefix=library --onto subtree/library -b subtree/library
+      #     git fetch origin
+      #     git checkout -b ${{ env.SYNC_BRANCH }} origin/main
 
-      - name: Merge subtree
-        run: |
-          cd repo
-          git subtree merge --prefix=library subtree/library --squash
+      # - name: Merge subtree
+      #   run: |
+      #     cd repo
+      #     git subtree merge --prefix=library subtree/library --squash
