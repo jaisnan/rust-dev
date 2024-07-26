@@ -415,7 +415,9 @@ use crate::intrinsics;
 use crate::marker::FnPtr;
 use crate::ub_checks;
 
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, align_of, size_of, MaybeUninit};
+#[cfg(kani)]
+use crate::kani;
 
 mod alignment;
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
@@ -1692,6 +1694,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 #[stable(feature = "volatile", since = "1.9.0")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[rustc_diagnostic_item = "ptr_read_volatile"]
+#[safety::requires(ub_checks::can_dereference(src))]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
@@ -1771,6 +1774,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 #[stable(feature = "volatile", since = "1.9.0")]
 #[rustc_diagnostic_item = "ptr_write_volatile"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[safety::requires(ub_checks::can_write(dst))]
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
@@ -2293,4 +2297,20 @@ pub macro addr_of($place:expr) {
 #[allow_internal_unstable(raw_ref_op)]
 pub macro addr_of_mut($place:expr) {
     &raw mut $place
+}
+
+#[cfg(kani)]
+#[unstable(feature="kani", issue="none")]
+mod verify {
+    use crate::fmt::Debug;
+    use super::*;
+    use crate::kani;
+
+    #[kani::proof_for_contract(read_volatile)]
+    pub fn check_read_u128() {
+        let val = kani::any::<u16>();
+        let ptr = &val as *const _;
+        let copy = unsafe { read_volatile(ptr) };
+        assert_eq!(val, copy);
+    }
 }
