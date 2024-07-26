@@ -35,9 +35,8 @@ jobs:
           ref: features/verify-rust-std
 
       - name: Read date from rust-toolchain.toml
-        id: toolchain-date
+        working-directory: kani
         run: |
-          cd kani/
           TOOLCHAIN_DATE=$(grep 'date =' rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
           echo "toolchain_date=$TOOLCHAIN_DATE" >> $GITHUB_OUTPUT
 
