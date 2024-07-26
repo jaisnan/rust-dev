@@ -83,19 +83,19 @@ jobs:
         with:
           path: head
 
-      - name: Add upstream remote
+      - name: Add upstream remote and fetch specific commit
         working-directory: head
         run: |
           git remote add upstream https://github.com/rust-lang/rust.git
-          git fetch upstream
+          git fetch upstream ${{ needs.prepare.outputs.toolchain_date }}
 
       - name: Prepare sync branch
         working-directory: head
         run: |
-          SYNC_BRANCH="sync-${{ steps.rust-info.outputs.toolchain_date }}"
+          SYNC_BRANCH="sync-${{ needs.prepare.outputs.toolchain_date }}"
           echo "SYNC_BRANCH=$SYNC_BRANCH" >> $GITHUB_ENV
           echo "--- Fork branch: ${SYNC_BRANCH} ---"
-          git checkout ${{ steps.rust-info.outputs.commit_hash }}
+          git checkout ${{ needs.prepare.outputs.commit_hash }}
           git pull
 
       # - name: Update subtree
