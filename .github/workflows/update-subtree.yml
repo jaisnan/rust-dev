@@ -1,0 +1,96 @@
+name: Sync Rust STD
+
+on:
+  workflow_dispatch:
+
+env:
+  REPO_OWNER: model-checking
+  REPO_NAME: kani
+  BRANCH_NAME: features/verify-rust-std
+
+jobs:
+  prepare:
+    runs-on: ${{ matrix.os }}
+    outputs:
+      commit_hash: ${{ steps.rust-info.outputs.commit_hash }}
+      commit_date: ${{ steps.rust-info.outputs.commit_date }}
+      toolchain_date: ${{ steps.toolchain-date.outputs.toolchain_date }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout library
+        uses: actions/checkout@v3
+        with:
+          path: head
+
+      - name: Checkout `features/verify-rust-std`
+        uses: actions/checkout@v4
+        with:
+          repository: model-checking/kani
+          path: kani
+          ref: features/verify-rust-std
+
+      - name: Read date from rust-toolchain.toml
+        id: toolchain-date
+        run: |
+          TOOLCHAIN_DATE=$(grep 'date =' kani/rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
+          echo "toolchain_date=$TOOLCHAIN_DATE" >> $GITHUB_OUTPUT
+
+      - name: Get Rust info
+        id: rust-info
+        run: |
+          RUSTC_INFO=$(rustc --version --verbose)
+          COMMIT_HASH=$(echo "$RUSTC_INFO" | grep 'commit-hash' | awk '{print $2}')
+          COMMIT_DATE=$(echo "$RUSTC_INFO" | grep 'commit-date' | awk '{print $2}')
+          echo "commit_hash=$COMMIT_HASH" >> $GITHUB_OUTPUT
+          echo "commit_date=$COMMIT_DATE" >> $GITHUB_OUTPUT
+
+  sanity-check:
+    needs: prepare
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo gathered variables
+        run: |
+          echo "Commit Hash: ${{ needs.prepare.outputs.commit_hash }}"
+          echo "Commit Date: ${{ needs.prepare.outputs.commit_date }}"
+          echo "Toolchain Date: ${{ needs.prepare.outputs.toolchain_date }}"
+
+  sync:
+    needs: prepare
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout library
+        uses: actions/checkout@v3
+        with:
+          path: head
+
+      - name: Add upstream remote
+        run: |
+          cd head
+          git remote add upstream https://github.com/rust-lang/rust.git
+          git fetch upstream
+
+      - name: Prepare sync branch
+        run: |
+          cd head
+          SYNC_BRANCH="sync-${{ steps.rust-info.outputs.toolchain_date }}"
+          echo "SYNC_BRANCH=$SYNC_BRANCH" >> $GITHUB_ENV
+          echo "--- Fork branch: ${SYNC_BRANCH} ---"
+          git checkout ${{ steps.rust-info.outputs.commit_hash }}
+          git pull
+
+      - name: Update subtree
+        run: |
+          cd repo
+          git subtree split --prefix=library --onto subtree/library -b subtree/library
+          git fetch origin
+          git checkout -b ${{ env.SYNC_BRANCH }} origin/main
+
+      - name: Merge subtree
+        run: |
+          cd repo
+          git subtree merge --prefix=library subtree/library --squash
