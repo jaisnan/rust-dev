@@ -1,8 +1,8 @@
 #!/bin/bash
 
-set -x
+set -eux
 
-HOME_DIR=$(pwd)
+HOME_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 # Set variables
 REPO_OWNER="model-checking"
@@ -25,7 +25,7 @@ get_rustc_info() {
 }
 
 read_toolchain_date() {
-    local toolchain_file="rust-toolchain.toml"
+    local toolchain_file=$TOOLCHAIN_FILE
 
     if [ ! -f "$toolchain_file" ]; then
         echo "Error: $toolchain_file not found in the working directory." >&2
@@ -33,7 +33,7 @@ read_toolchain_date() {
     fi
 
     local toolchain_date
-    toolchain_date=$(grep -oP '\[toolchain\] channel = "nightly-\K[0-9-]+' "$toolchain_file")
+    toolchain_date=$(grep -oP 'channel.*=.*"nightly-' ./rust-toolchain.toml | sed -E 's/.*nightly-([0-9-]+).*/\1/' "$toolchain_file")
 
     if [ -z "$toolchain_date" ]; then
         echo "Error: Could not extract date from $toolchain_file" >&2
