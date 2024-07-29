@@ -75,7 +75,6 @@ else
     # Clone the repository into the temporary directory
     echo "Cloning repository..."
     git clone --branch "$BRANCH_NAME" --depth 1 "https://github.com/$REPO_OWNER/$REPO_NAME.git" "$TMP_DIR/repo"
-    git switch $BRANCH_NAME
 
     if [ $? -ne 0 ]; then
         echo "Error: Failed to clone the repository."
@@ -119,7 +118,7 @@ cd $HOME_DIR
 SYNC_BRANCH="sync-$TOOLCHAIN_DATE" && echo "--- Fork branch: ${SYNC_BRANCH} ---"
 # # 1. Update the upstream/master branch with the latest changes
 git fetch upstream
-git checkout $COMMIT_HASH && git pull
+git checkout $COMMIT_HASH && git pull upstream $COMMIT_HASH
 
 # # 2. Update the subtree branch
 # This command will take a while again
