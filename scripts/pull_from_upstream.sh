@@ -85,7 +85,7 @@ else
 
     # Clone the repository into the temporary directory
     echo "Cloning repository..."
-    git clone --branch "$BRANCH_NAME" --depth 1 "https://github.com/$REPO_OWNER/$REPO_NAME.git" "$TMP_DIR/repo"
+    git clone --branch "$BRANCH_NAME" --depth 1 "https://github.com/$REPO_OWNER/$REPO_NAME.git" "$TMP_DIR"
 
     if [ $? -ne 0 ]; then
         echo "Error: Failed to clone the repository."
