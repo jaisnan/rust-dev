@@ -10,20 +10,15 @@ REPO_NAME="kani"
 BRANCH_NAME="features/verify-rust-std"
 TOOLCHAIN_FILE="rust-toolchain.toml"
 
+# Set base
+BASE_REPO="https://github.com/model-checking/verify-rust-std.git"
+
 # Create a temporary directory
 temp_home_dir=$(mktemp -d)
 
-# Copy the current directory to the temporary directory
-cp -r "$HOME_DIR" "$temp_home_dir"
-
-# Check if the copy was successful
-if [ $? -eq 0 ]; then
-    echo "Current directory copied to temporary directory: $temp_home_dir"
-else
-    echo "Failed to copy the current directory."
-    rm -rf "$temp_home_dir"  # Clean up the temporary directory
-    exit 1
-fi
+# Clone the repository into the temporary directory
+git clone "$REPO_URL" "$temp_home_dir"
+cd $temp_home_dir
 
 # Function to extract commit hash and date from rustc version
 get_rustc_info() {
