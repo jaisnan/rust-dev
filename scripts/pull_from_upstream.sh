@@ -10,6 +10,21 @@ REPO_NAME="kani"
 BRANCH_NAME="features/verify-rust-std"
 TOOLCHAIN_FILE="rust-toolchain.toml"
 
+# Create a temporary directory
+temp_home_dir=$(mktemp -d)
+
+# Copy the current directory to the temporary directory
+cp -r "$HOME_DIR" "$temp_home_dir"
+
+# Check if the copy was successful
+if [ $? -eq 0 ]; then
+    echo "Current directory copied to temporary directory: $temp_home_dir"
+else
+    echo "Failed to copy the current directory."
+    rm -rf "$temp_home_dir"  # Clean up the temporary directory
+    exit 1
+fi
+
 # Function to extract commit hash and date from rustc version
 get_rustc_info() {
     local rustc_output=$(rustc --version --verbose)
@@ -110,7 +125,7 @@ if ! git remote | grep -q '^upstream$'; then
     git remote add upstream https://github.com/rust-lang/rust.git
 fi
 
-cd $HOME_DIR
+cd $temp_home_dir
 
 # The checkout and pull itself needs to happen in sync with features/verify-rust-std
 # Often times rust is going to be ahead of kani in terms of the toolchain, and both need to point to
@@ -118,7 +133,7 @@ cd $HOME_DIR
 SYNC_BRANCH="sync-$TOOLCHAIN_DATE" && echo "--- Fork branch: ${SYNC_BRANCH} ---"
 # # 1. Update the upstream/master branch with the latest changes
 git fetch upstream
-git checkout $COMMIT_HASH && git pull upstream $COMMIT_HASH
+git checkout $COMMIT_HASH
 
 # # 2. Update the subtree branch
 # This command will take a while again
