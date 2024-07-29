@@ -54,6 +54,7 @@ read_toolchain_date() {
 }
 
 # Check if a path is provided as an argument
+# This is useful for local processing and debugging
 if [ $# -eq 1 ]; then
     REPO_PATH="$1"
     echo "Using provided repository path: $REPO_PATH"
@@ -94,6 +95,8 @@ else
 
     # Get rustc info
     RUSTC_INFO=$(get_rustc_info)
+    TOOLCHAIN_DATE=$(read_toolchain_date)
+
     COMMIT_HASH=$(echo $RUSTC_INFO | cut -d':' -f1)
     RUST_DATE=$(echo $RUSTC_INFO | cut -d':' -f2)
 
@@ -131,7 +134,6 @@ git fetch upstream
 git checkout $COMMIT_HASH
 
 # # 2. Update the subtree branch
-# This command will take a while again
 git subtree split --prefix=library --onto subtree/library -b subtree/library
 # 3. Update main
 git fetch origin
