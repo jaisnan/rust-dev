@@ -17,7 +17,7 @@ BASE_REPO="https://github.com/model-checking/verify-rust-std.git"
 temp_home_dir=$(mktemp -d)
 
 # Clone the repository into the temporary directory
-git clone "$REPO_URL" "$temp_home_dir"
+git clone "$BASE_REPO" "$temp_home_dir"
 cd $temp_home_dir
 
 # Function to extract commit hash and date from rustc version
