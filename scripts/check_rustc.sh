@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the working directory for your local repository
-HEAD_DIR="/tmp/verify-rust-std"
+HEAD_DIR=$1
 
 # Temporary directory for upstream repository
 TEMP_DIR=$(mktemp -d)
