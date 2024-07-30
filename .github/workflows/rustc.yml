@@ -30,4 +30,4 @@ jobs:
           path: head
 
       - name: Run rustc script
-        run: ${{ github.workspace }}/scripts/check_rustc.sh ./head
+        run: bash ${{ github.workspace }}/scripts/check_rustc.sh ./head
