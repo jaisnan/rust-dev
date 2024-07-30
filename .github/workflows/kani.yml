@@ -33,5 +33,8 @@ jobs:
           path: verify-rust-std
           submodules: true
 
+      - name: Run ls to debug
+        run: ls
+
       - name: Run Kani Script
         run: bash ${{ github.workspace }}/scripts/check_kani.sh ./verify-rust-std/

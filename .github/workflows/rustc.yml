@@ -29,5 +29,8 @@ jobs:
         with:
           path: head
 
+      - name: Run ls to debug
+        run: ls
+
       - name: Run rustc script
         run: bash ${{ github.workspace }}/scripts/check_rustc.sh ./head
