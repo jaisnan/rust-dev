@@ -31,7 +31,7 @@ jobs:
           path: head
 
       - name: Run ls
-        run: ls ${{ github.workspace }}
+        run: ls ${{ github.workspace }}/head
 
       - name: Run rustc script
         run: bash ./head/scripts/check_rustc.sh ./head
