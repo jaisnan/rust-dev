@@ -35,4 +35,4 @@ jobs:
           submodules: true
 
       - name: Run Kani Script
-        run: bash ./verify-rust-std/scripts/check_kani.sh ${{github.workspace}}/head
+        run: bash ./head/scripts/check_kani.sh ${{github.workspace}}/head
