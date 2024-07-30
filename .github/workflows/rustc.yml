@@ -31,8 +31,7 @@ jobs:
           path: head
 
       - name: Run ls
-        run: ls ./head
-
+        run: ls ./head/library
 
       - name: Run rustc script
         run: bash ./head/scripts/check_rustc.sh ./head

@@ -34,5 +34,8 @@ jobs:
           path: verify-rust-std
           submodules: true
 
+      - name: Run ls
+        run: ls ./verify-rust-std/library
+
       - name: Run Kani Script
         run: bash ./verify-rust-std/scripts/check_kani.sh ./verify-rust-std/
