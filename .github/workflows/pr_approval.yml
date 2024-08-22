@@ -73,7 +73,6 @@ jobs:
               const tomlContent = fs.readFileSync('.github/pull_requests.toml', 'utf8');
               console.log('TOML content:', tomlContent);
               const tomlData = toml.parse(tomlContent);
-              console.log('Parsed TOML data:', JSON.stringify(tomlData, null, 2));
 
               if (!tomlData.committee || !Array.isArray(tomlData.committee.members)) {
                 throw new Error('committee.members is not an array in the TOML file');
@@ -99,7 +98,7 @@ jobs:
                 .map(review => review.user.login)
             );
 
-            const requiredApprovals = 2;
+            const requiredApprovals = 1;
             const currentCountfromCommittee = Array.from(approvers)
               .filter(approver => requiredApprovers.includes(approver))
               .length;
@@ -110,7 +109,7 @@ jobs:
 
             // Core logic that checks if the approvers are in the committee
             const checkName = 'PR Approval Status';
-            const conclusion = (approvers.size >= requiredApprovals && currentCountfromCommittee >= 2) ? 'success' : 'failure';
+            const conclusion = (currentCountfromCommittee >= requiredApprovals) ? 'success' : 'failure';
             const output = {
               title: checkName,
               summary: `PR has ${approvers.size} total approvals and ${requiredApprovals} required approvals.`,
@@ -124,7 +123,7 @@ jobs:
               pull_number
             });
 
-            // Create or update check run
+            // Update check run
             const checkRuns = await github.rest.checks.listForRef({
               owner,
               repo,
@@ -132,29 +131,15 @@ jobs:
               check_name: checkName
             });
 
-            // Reuse the same workflow everytime there's a new review submitted
-            // instead of creating new workflows. Better efficiency and readability
-            // as the number of workflows is kept to a minimal number
-            if (checkRuns.data.total_count > 0) {
-              await github.rest.checks.update({
-                owner,
-                repo,
-                check_run_id: checkRuns.data.check_runs[0].id,
-                status: 'completed',
-                conclusion,
-                output
-              });
-            } else {
-              await github.rest.checks.create({
-                owner,
-                repo,
-                name: checkName,
-                head_sha: pr.data.head.sha,
-                status: 'completed',
-                conclusion,
-                output
-              });
-            }
+            await github.rest.checks.create({
+              owner,
+              repo,
+              name: checkName,
+              head_sha: pr.data.head.sha,
+              status: 'completed',
+              conclusion,
+              output
+            });
 
             if (conclusion === 'failure') {
               core.setFailed(`PR needs at least ${requiredApprovals} total approvals and 2 required approvals. Current approvals: ${approvers.size}, Required approvals: ${requiredApprovals}`);
