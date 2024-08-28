@@ -196,9 +196,9 @@
 //! * The **provenance** it has, defining the memory it has permission to access.
 //!   Provenance can be absent, in which case the pointer does not have permission to access any memory.
 //!
-//! Under Strict Provenance, a usize *cannot* accurately represent a pointer, and converting from
-//! a pointer to a usize is generally an operation which *only* extracts the address. It is
-//! therefore *impossible* to construct a valid pointer from a usize because there is no way
+//! Under Strict Provenance, a `usize` *cannot* accurately represent a pointer, and converting from
+//! a pointer to a `usize` is generally an operation which *only* extracts the address. It is
+//! therefore *impossible* to construct a valid pointer from a `usize` because there is no way
 //! to restore the address-space and provenance. In other words, pointer-integer-pointer
 //! roundtrips are not possible (in the sense that the resulting pointer is not dereferenceable).
 //!
@@ -234,16 +234,16 @@
 //!
 //! Most code needs no changes to conform to strict provenance, as the only really concerning
 //! operation that *wasn't* obviously already Undefined Behaviour is casts from usize to a
-//! pointer. For code which *does* cast a usize to a pointer, the scope of the change depends
+//! pointer. For code which *does* cast a `usize` to a pointer, the scope of the change depends
 //! on exactly what you're doing.
 //!
-//! In general you just need to make sure that if you want to convert a usize address to a
+//! In general, you just need to make sure that if you want to convert a `usize` address to a
 //! pointer and then use that pointer to read/write memory, you need to keep around a pointer
 //! that has sufficient provenance to perform that read/write itself. In this way all of your
 //! casts from an address to a pointer are essentially just applying offsets/indexing.
 //!
 //! This is generally trivial to do for simple cases like tagged pointers *as long as you
-//! represent the tagged pointer as an actual pointer and not a usize*. For instance:
+//! represent the tagged pointer as an actual pointer and not a `usize`*. For instance:
 //!
 //! ```
 //! #![feature(strict_provenance)]
@@ -309,7 +309,7 @@
 //!   i.e. the usual "ZSTs are fake, do what you want" rules apply *but* this only applies
 //!   for actual forgery (integers cast to pointers). If you borrow some struct's field
 //!   that *happens* to be zero-sized, the resulting pointer will have provenance tied to
-//!   that allocation and it will still get invalidated if the allocation gets deallocated.
+//!   that allocation, and it will still get invalidated if the allocation gets deallocated.
 //!   In the future we may introduce an API to make such a forged allocation explicit.
 //!
 //! * [`wrapping_offset`][] a pointer outside its provenance. This includes pointers
@@ -409,13 +409,10 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use crate::cmp::Ordering;
-use crate::fmt;
-use crate::hash;
-use crate::intrinsics;
 use crate::marker::FnPtr;
-use crate::ub_checks;
+use crate::mem::{self, MaybeUninit};
+use crate::{fmt, hash, intrinsics, ub_checks};
 
-use crate::mem::{self, align_of, size_of, MaybeUninit};
 #[cfg(kani)]
 use crate::kani;
 
@@ -425,12 +422,10 @@ pub use alignment::Alignment;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
-pub use crate::intrinsics::copy_nonoverlapping;
-
+pub use crate::intrinsics::copy;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
-pub use crate::intrinsics::copy;
-
+pub use crate::intrinsics::copy_nonoverlapping;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::write_bytes;
@@ -452,8 +447,13 @@ mod mut_ptr;
 
 /// Executes the destructor (if any) of the pointed-to value.
 ///
-/// This is semantically equivalent to calling [`ptr::read`] and discarding
+/// This is almost the same as calling [`ptr::read`] and discarding
 /// the result, but has the following advantages:
+// FIXME: say something more useful than "almost the same"?
+// There are open questions here: `read` requires the value to be fully valid, e.g. if `T` is a
+// `bool` it must be 0 or 1, if it is a reference then it must be dereferenceable. `drop_in_place`
+// only requires that `*to_drop` be "valid for dropping" and we have not defined what that means. In
+// Miri it currently (May 2024) requires nothing at all for types without drop glue.
 ///
 /// * It is *required* to use `drop_in_place` to drop unsized types like
 ///   trait objects, because they can't be read out onto the stack and
@@ -567,7 +567,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null"]
 pub const fn null<T: ?Sized + Thin>() -> *const T {
-    from_raw_parts(without_provenance(0), ())
+    from_raw_parts(without_provenance::<()>(0), ())
 }
 
 /// Creates a null mutable raw pointer.
@@ -593,7 +593,7 @@ pub const fn null<T: ?Sized + Thin>() -> *const T {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_null_mut"]
 pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
-    from_raw_parts_mut(without_provenance_mut(0), ())
+    from_raw_parts_mut(without_provenance_mut::<()>(0), ())
 }
 
 /// Creates a pointer with the given address and no provenance.
@@ -603,7 +603,7 @@ pub const fn null_mut<T: ?Sized + Thin>() -> *mut T {
 /// Without provenance, this pointer is not associated with any actual allocation. Such a
 /// no-provenance pointer may be used for zero-sized memory accesses (if suitably aligned), but
 /// non-zero-sized memory accesses with a no-provenance pointer are UB. No-provenance pointers are
-/// little more than a usize address in disguise.
+/// little more than a `usize` address in disguise.
 ///
 /// This is different from `addr as *const T`, which creates a pointer that picks up a previously
 /// exposed provenance. See [`with_exposed_provenance`] for more details on that operation.
@@ -647,7 +647,7 @@ pub const fn dangling<T>() -> *const T {
 /// Without provenance, this pointer is not associated with any actual allocation. Such a
 /// no-provenance pointer may be used for zero-sized memory accesses (if suitably aligned), but
 /// non-zero-sized memory accesses with a no-provenance pointer are UB. No-provenance pointers are
-/// little more than a usize address in disguise.
+/// little more than a `usize` address in disguise.
 ///
 /// This is different from `addr as *mut T`, which creates a pointer that picks up a previously
 /// exposed provenance. See [`with_exposed_provenance_mut`] for more details on that operation.
@@ -684,7 +684,7 @@ pub const fn dangling_mut<T>() -> *mut T {
     without_provenance_mut(mem::align_of::<T>())
 }
 
-/// Convert an address back to a pointer, picking up a previously 'exposed' provenance.
+/// Converts an address back to a pointer, picking up a previously 'exposed' provenance.
 ///
 /// This is a more rigorously specified alternative to `addr as *const T`. The provenance of the
 /// returned pointer is that of *any* pointer that was previously exposed by passing it to
@@ -695,7 +695,7 @@ pub const fn dangling_mut<T>() -> *mut T {
 ///
 /// If there is no 'exposed' provenance that justifies the way this pointer will be used,
 /// the program has undefined behavior. In particular, the aliasing rules still apply: pointers
-/// and references that have been invalidated due to aliasing accesses cannot be used any more,
+/// and references that have been invalidated due to aliasing accesses cannot be used anymore,
 /// even if they have been exposed!
 ///
 /// Note that there is no algorithm that decides which provenance will be used. You can think of this
@@ -732,7 +732,7 @@ where
     addr as *const T
 }
 
-/// Convert an address back to a mutable pointer, picking up a previously 'exposed' provenance.
+/// Converts an address back to a mutable pointer, picking up a previously 'exposed' provenance.
 ///
 /// This is a more rigorously specified alternative to `addr as *mut T`. The provenance of the
 /// returned pointer is that of *any* pointer that was previously passed to
@@ -772,10 +772,53 @@ where
     addr as *mut T
 }
 
-/// Convert a reference to a raw pointer.
+/// Converts a reference to a raw pointer.
 ///
-/// This is equivalent to `r as *const T`, but is a bit safer since it will never silently change
-/// type or mutability, in particular if the code is refactored.
+/// For `r: &T`, `from_ref(r)` is equivalent to `r as *const T` (except for the caveat noted below),
+/// but is a bit safer since it will never silently change type or mutability, in particular if the
+/// code is refactored.
+///
+/// The caller must ensure that the pointee outlives the pointer this function returns, or else it
+/// will end up dangling.
+///
+/// The caller must also ensure that the memory the pointer (non-transitively) points to is never
+/// written to (except inside an `UnsafeCell`) using this pointer or any pointer derived from it. If
+/// you need to mutate the pointee, use [`from_mut`]. Specifically, to turn a mutable reference `m:
+/// &mut T` into `*const T`, prefer `from_mut(m).cast_const()` to obtain a pointer that can later be
+/// used for mutation.
+///
+/// ## Interaction with lifetime extension
+///
+/// Note that this has subtle interactions with the rules for lifetime extension of temporaries in
+/// tail expressions. This code is valid, albeit in a non-obvious way:
+/// ```rust
+/// # type T = i32;
+/// # fn foo() -> T { 42 }
+/// // The temporary holding the return value of `foo` has its lifetime extended,
+/// // because the surrounding expression involves no function call.
+/// let p = &foo() as *const T;
+/// unsafe { p.read() };
+/// ```
+/// Naively replacing the cast with `from_ref` is not valid:
+/// ```rust,no_run
+/// # use std::ptr;
+/// # type T = i32;
+/// # fn foo() -> T { 42 }
+/// // The temporary holding the return value of `foo` does *not* have its lifetime extended,
+/// // because the surrounding expression involves no function call.
+/// let p = ptr::from_ref(&foo());
+/// unsafe { p.read() }; // UB! Reading from a dangling pointer ⚠️
+/// ```
+/// The recommended way to write this code is to avoid relying on lifetime extension
+/// when raw pointers are involved:
+/// ```rust
+/// # use std::ptr;
+/// # type T = i32;
+/// # fn foo() -> T { 42 }
+/// let x = foo();
+/// let p = ptr::from_ref(&x);
+/// unsafe { p.read() };
+/// ```
 #[inline(always)]
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
@@ -786,10 +829,47 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
     r
 }
 
-/// Convert a mutable reference to a raw pointer.
+/// Converts a mutable reference to a raw pointer.
 ///
-/// This is equivalent to `r as *mut T`, but is a bit safer since it will never silently change
-/// type or mutability, in particular if the code is refactored.
+/// For `r: &mut T`, `from_mut(r)` is equivalent to `r as *mut T` (except for the caveat noted
+/// below), but is a bit safer since it will never silently change type or mutability, in particular
+/// if the code is refactored.
+///
+/// The caller must ensure that the pointee outlives the pointer this function returns, or else it
+/// will end up dangling.
+///
+/// ## Interaction with lifetime extension
+///
+/// Note that this has subtle interactions with the rules for lifetime extension of temporaries in
+/// tail expressions. This code is valid, albeit in a non-obvious way:
+/// ```rust
+/// # type T = i32;
+/// # fn foo() -> T { 42 }
+/// // The temporary holding the return value of `foo` has its lifetime extended,
+/// // because the surrounding expression involves no function call.
+/// let p = &mut foo() as *mut T;
+/// unsafe { p.write(T::default()) };
+/// ```
+/// Naively replacing the cast with `from_mut` is not valid:
+/// ```rust,no_run
+/// # use std::ptr;
+/// # type T = i32;
+/// # fn foo() -> T { 42 }
+/// // The temporary holding the return value of `foo` does *not* have its lifetime extended,
+/// // because the surrounding expression involves no function call.
+/// let p = ptr::from_mut(&mut foo());
+/// unsafe { p.write(T::default()) }; // UB! Writing to a dangling pointer ⚠️
+/// ```
+/// The recommended way to write this code is to avoid relying on lifetime extension
+/// when raw pointers are involved:
+/// ```rust
+/// # use std::ptr;
+/// # type T = i32;
+/// # fn foo() -> T { 42 }
+/// let mut x = foo();
+/// let p = ptr::from_mut(&mut x);
+/// unsafe { p.write(T::default()) };
+/// ```
 #[inline(always)]
 #[must_use]
 #[stable(feature = "ptr_from_ref", since = "1.76.0")]
@@ -837,7 +917,7 @@ pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
 #[rustc_allow_const_fn_unstable(ptr_metadata)]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts"]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
-    intrinsics::aggregate_raw_ptr(data, len)
+    from_raw_parts(data, len)
 }
 
 /// Forms a raw mutable slice from a pointer and a length.
@@ -883,7 +963,7 @@ pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
 #[rustc_diagnostic_item = "ptr_slice_from_raw_parts_mut"]
 pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
-    intrinsics::aggregate_raw_ptr(data, len)
+    from_raw_parts_mut(data, len)
 }
 
 /// Swaps the values at two mutable locations of the same type, without
@@ -1094,7 +1174,7 @@ const unsafe fn swap_nonoverlapping_simple_untyped<T>(x: *mut T, y: *mut T, coun
         // If we end up here, it's because we're using a simple type -- like
         // a small power-of-two-sized thing -- or a special type with particularly
         // large alignment, particularly SIMD types.
-        // Thus we're fine just reading-and-writing it, as either it's small
+        // Thus, we're fine just reading-and-writing it, as either it's small
         // and that works well anyway or it's special and the type's author
         // presumably wanted things to be done in the larger chunk.
 
@@ -1287,7 +1367,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
     // provides enough information to know that this is a typed operation.
 
     // However, as of March 2023 the compiler was not capable of taking advantage
-    // of that information.  Thus the implementation here switched to an intrinsic,
+    // of that information. Thus, the implementation here switched to an intrinsic,
     // which lowers to `_0 = *src` in MIR, to address a few issues:
     //
     // - Using `MaybeUninit::assume_init` after a `copy_nonoverlapping` was not
@@ -1385,7 +1465,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///
 /// # Examples
 ///
-/// Read a usize value from a byte buffer:
+/// Read a `usize` value from a byte buffer:
 ///
 /// ```
 /// use std::mem;
@@ -1567,7 +1647,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 /// As a result, using `&packed.unaligned as *const FieldType` causes immediate
 /// *undefined behavior* in your program.
 ///
-/// Instead you must use the [`ptr::addr_of_mut!`](addr_of_mut)
+/// Instead, you must use the [`ptr::addr_of_mut!`](addr_of_mut)
 /// macro to create the pointer. You may use that returned pointer together with
 /// this function.
 ///
@@ -1596,7 +1676,7 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// # Examples
 ///
-/// Write a usize value to a byte buffer:
+/// Write a `usize` value to a byte buffer:
 ///
 /// ```
 /// use std::mem;
@@ -1808,10 +1888,9 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
     // FIXME(#75598): Direct use of these intrinsics improves codegen significantly at opt-level <=
     // 1, where the method versions of these operations are not inlined.
     use intrinsics::{
-        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_sub,
-        wrapping_add, wrapping_mul, wrapping_sub,
+        assume, cttz_nonzero, exact_div, mul_with_overflow, unchecked_rem, unchecked_shl,
+        unchecked_shr, unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
     };
-    use intrinsics::{unchecked_shl, unchecked_shr};
 
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
     ///
@@ -1934,7 +2013,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
         let y = cttz_nonzero(a);
         if x < y { x } else { y }
     };
-    // SAFETY: gcdpow has an upper-bound that’s at most the number of bits in a usize.
+    // SAFETY: gcdpow has an upper-bound that’s at most the number of bits in a `usize`.
     let gcd = unsafe { unchecked_shl(1usize, gcdpow) };
     // SAFETY: gcd is always greater or equal to 1.
     if addr & unsafe { unchecked_sub(gcd, 1) } == 0 {
@@ -2133,7 +2212,7 @@ impl<F: FnPtr> fmt::Debug for F {
     }
 }
 
-/// Create a `const` raw pointer to a place, without creating an intermediate reference.
+/// Creates a `const` raw pointer to a place, without creating an intermediate reference.
 ///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
 /// and points to initialized data. For cases where those requirements do not hold,
@@ -2207,7 +2286,7 @@ pub macro addr_of($place:expr) {
     &raw const $place
 }
 
-/// Create a `mut` raw pointer to a place, without creating an intermediate reference.
+/// Creates a `mut` raw pointer to a place, without creating an intermediate reference.
 ///
 /// Creating a reference with `&`/`&mut` is only allowed if the pointer is properly aligned
 /// and points to initialized data. For cases where those requirements do not hold,
@@ -2310,4 +2389,3 @@ mod verify {
         assert_eq!(val, copy);
     }
 }
-
